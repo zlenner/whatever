@@ -15,7 +15,7 @@ const logger = pino({
 export const connectToWhatsApp = async () => {
     const lock = new AsyncLock()
 
-    const { state, saveCreds } = await useMultiFileAuthState('auth_info')
+    const { state, saveCreds } = await useMultiFileAuthState(process.env.AUTH_FOLDER ?? "auth_info")
     const conn = makeWASocket({
         auth: state,
         logger,
