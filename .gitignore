@@ -132,3 +132,4 @@ dist
 
 auth_info
 .DS_Store
+dist/
