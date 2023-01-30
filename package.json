@@ -1,0 +1,23 @@
+{
+  "name": "whatever",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "ts-node src/index",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@adiwajshing/baileys": "^5.0.0",
+    "async-lock": "^1.4.0",
+    "dotenv": "^16.0.3",
+    "openai": "^3.1.0",
+    "pino-pretty": "^9.1.1",
+    "qrcode-terminal": "^0.12.0"
+  },
+  "devDependencies": {
+    "@types/async-lock": "^1.3.0"
+  }
+}
