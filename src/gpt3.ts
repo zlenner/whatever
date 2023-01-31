@@ -35,7 +35,6 @@ const buildSummary = async (from_id: string, questionToMerge: Text) => {
     const pastSummaryFormatted = pastSummary === "" ? "" : "Summary:\n" + pastSummary + "\n\n"
     const prompt = prefix + pastSummaryFormatted + questionToMergeString + "\n\nSummary of previous summary and conversation:\n"
 
-    console.log("-> Summary Prompt:", prompt)
     const completion = await openai.createCompletion({
         model: "text-davinci-003",
         prompt,
@@ -68,7 +67,6 @@ export const ask = async (from_id: string, question: string) => {
     const prompt = await buildPrompt(from_id, question)
 
     try {
-        console.log("-> Chat Prompt:", prompt)
         const completion = await openai.createCompletion({
             model: "text-davinci-003",
             prompt,
