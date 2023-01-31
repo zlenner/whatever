@@ -5,16 +5,8 @@ import { ask } from './gpt3'
 import AsyncLock from "async-lock"
 import { createWhisperInstance } from './whisper'
 import textToSpeech from './elevenlabs'
+import { timer } from './utils'
 
-const timer = () => {
-    let start = Date.now()
-    return () => {
-        const end = Date.now()
-        const diff = end - start
-        start = end
-        return diff + "ms"
-    }
-}
 
 const logger = pino({
     transport: {
@@ -32,7 +24,7 @@ export const connectToWhatsApp = async () => {
         printQRInTerminal: true
     })
 
-    const {transcribeWhatsappMessage} = await createWhisperInstance({ 
+    const {transcribeAudioB64, downloadWhatsappMessageAsB64} = await createWhisperInstance({ 
         logger,
         // pass this so that baileys can request a reupload of media
         // that has been deleted
@@ -74,12 +66,16 @@ export const connectToWhatsApp = async () => {
             const senderNumber = message.key.remoteJid!.slice(0, -15)
 
             if (messageType === "audioMessage") {
-                await conn.sendReceipts([message.key], "played")
-
                 console.log("[Received]", senderNumber, "=>", "[Voice Message]")
+
+                next()
+                const audioB64 = await downloadWhatsappMessageAsB64(message)
+                console.log(`[Downloaded ${next()}]`, senderNumber, "=>", "[Voice Message]")
+
+                await conn.sendReceipts([message.key], "played")
                 
                 next()
-                const response = await transcribeWhatsappMessage(message)
+                const response = await transcribeAudioB64(audioB64)
                 console.log(`[Transcibed ${next()}]`, senderNumber, '->', response.transcription)
 
                 await conn.sendPresenceUpdate("recording", message.key.remoteJid!)
