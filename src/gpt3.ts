@@ -11,11 +11,9 @@ require('dotenv').config();
 
 const initPrompt = fs.readFileSync(path.join(__dirname, "./prompt.txt"), "utf8").toString()
 
-const configuration = new Configuration({
+const openai = new OpenAIApi(new Configuration({
     apiKey: process.env.OPENAI_API_KEY,
-});
-
-const openai = new OpenAIApi(configuration);
+}));
 
 interface Text {
     question: string,
