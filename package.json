@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "ts-node src/index",
-    "build": "npx tsc && cp src/prompt.txt dist/",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "npx tsc && cp src/prompt.txt dist/"
   },
   "author": "",
   "license": "ISC",
@@ -17,7 +17,7 @@
     "dotenv": "^16.0.3",
     "gpt3-tokenizer": "^1.1.5",
     "inquirer": "^8.0.1",
-    "openai": "^3.1.0",
+    "openai": "^3.2.1",
     "pino-pretty": "^9.1.1",
     "qrcode-terminal": "^0.12.0",
     "typescript": "^4.9.4"
