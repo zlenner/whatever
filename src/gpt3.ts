@@ -1,6 +1,4 @@
-import fs from "fs"
-import path from "path"
-import { Configuration, OpenAIApi } from "openai"
+import { ChatCompletionRequestMessage, Configuration, OpenAIApi } from "openai"
 import { AxiosError } from "axios"
 import GPT3Tokenizer from 'gpt3-tokenizer';
 
@@ -8,8 +6,6 @@ const tokenizer = new GPT3Tokenizer({ type: 'gpt3' })
 const getNumTokens = (str: string) => tokenizer.encode(str).bpe.length
 
 require('dotenv').config();
-
-const initPrompt = fs.readFileSync(path.join(__dirname, "./prompt.txt"), "utf8").toString()
 
 const openai = new OpenAIApi(new Configuration({
     apiKey: process.env.OPENAI_API_KEY,
@@ -20,43 +16,66 @@ interface Text {
     answer: string,
 }
 
-const getTextString = (text: Text) => `Q: ${text.question}\nA: ${text.answer}`
+const getTextMessages = (text: Text): ChatCompletionRequestMessage[] => [
+    {role: "user", content: text.question},
+    {role: "assistant", content: text.answer},
+]
 
 const pastSummaryFromId: Record<string, string> = {}
 
-const buildSummary = async (from_id: string, questionToMerge: Text) => {
-    const pastSummary = pastSummaryFromId[from_id] || ""
+const buildSummary = async (from_id: string, questionToMerge: Text): Promise<ChatCompletionRequestMessage> => {
+    const pastSummary: ChatCompletionRequestMessage | null = pastSummaryFromId[from_id] ? {
+        role: "system",
+        content: "Your previously generated summary:" + pastSummaryFromId[from_id]
+    } : null
+
+    const prompt: ChatCompletionRequestMessage[] = [
+        {role: "system", content: "Your one job is to summarize the conversation an AI chatbot named Whatever had with its user that leaves out no important detail so they can pick up where they left off later by just going reading the summary."},
+    ]
+
+    if (pastSummary) {
+        prompt.push(pastSummary)
+    }
+
+    prompt.push(...getTextMessages(questionToMerge))
     
-    const questionToMergeString = getTextString(questionToMerge)
-
-    const prefix = "An AI chatbot named Whatever and a human had a conversation. A conversation summary needs to be generated that leaves out no important detail so they can pick up where they left off later by just reading the summary.\n\n"
-    const pastSummaryFormatted = pastSummary === "" ? "" : "Summary:\n" + pastSummary + "\n\n"
-    const prompt = prefix + pastSummaryFormatted + questionToMergeString + "\n\nSummary of previous summary and conversation:\n"
-
-    const completion = await openai.createCompletion({
-        model: "text-davinci-003",
-        prompt,
-        max_tokens: 4096 - getNumTokens(prompt)
+    const completion = await openai.createChatCompletion({
+        model: "gpt-3.5-turbo",
+        messages: prompt,
     })
 
-    const newSummary = completion.data.choices[0].text!.trim()
+    const newSummary = completion.data.choices[0].message?.content ?? ""
     pastSummaryFromId[from_id] = newSummary
 
-    return "Conversation Summary: " + newSummary + "\n"
+    return {
+        role: "system",
+        content: "Summary of the conversation you've had with your user so far: " + newSummary
+    }
 }
 
 const pastQuestionsByFromId: Record<string, Text[]> = {}
 
-const buildPrompt = async (from_id: string, question: string): Promise<string> => {
+const buildPrompt = async (from_id: string, question: string): Promise<ChatCompletionRequestMessage[]> => {
     const pastQuestions = pastQuestionsByFromId[from_id] || []
 
-    const secondLastQuestion = pastQuestions.length < 2 ? undefined : pastQuestions[pastQuestions.length - 2]
-    const summaryString = !secondLastQuestion ? "" : await buildSummary(from_id, secondLastQuestion)
+    const secondLastQuestion = pastQuestions.length < 2 ? null : pastQuestions[pastQuestions.length - 2]
+    const summaryMessage = !secondLastQuestion ? null : await buildSummary(from_id, secondLastQuestion)
 
-    const lastQuestionString = pastQuestions.length < 1 ? "" : getTextString(pastQuestions[pastQuestions.length - 1]) + "\n"
-    const currentQuestionString = `Q: ${question}\nA: `
+    const messages: ChatCompletionRequestMessage[] = [
+        {role: "system", content: "You are a helpful AI assistant that answers helpfully and factually to any queries. You can respond to both voice (with voice) and text messages (with text) in all mainstream languages but are most proficient in English. You call yourself Whatever."},
+    ]
 
-    return initPrompt + summaryString + lastQuestionString + currentQuestionString
+    if (summaryMessage) {
+        messages.push(summaryMessage)
+    }
+
+    if (pastQuestions[pastQuestions.length - 1]) {
+        messages.push(...getTextMessages(pastQuestions[pastQuestions.length - 1]))
+    }
+    
+    messages.push({role: "user", content: question})
+
+    return messages
 }
 
 export const ask = async (from_id: string, question: string) => {
@@ -65,13 +84,12 @@ export const ask = async (from_id: string, question: string) => {
     const prompt = await buildPrompt(from_id, question)
 
     try {
-        const completion = await openai.createCompletion({
-            model: "text-davinci-003",
-            prompt,
-            max_tokens: 4096 - getNumTokens(prompt)
+        const completion = await openai.createChatCompletion({
+            model: "gpt-3.5-turbo",
+            messages: prompt,
         })
 
-        const answer = completion.data.choices[0].text!.trim()
+        const answer = completion.data.choices[0].message?.content ?? ""
 
         pastQuestionsByFromId[from_id].push({
             question,
