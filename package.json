@@ -16,7 +16,6 @@
     "chalk": "^4.1.2",
     "dotenv": "^16.0.3",
     "ffmpeg": "^0.0.4",
-    "gpt3-tokenizer": "^1.1.5",
     "inquirer": "^8.0.1",
     "openai": "^3.2.1",
     "pino-pretty": "^9.1.1",
