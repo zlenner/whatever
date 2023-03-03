@@ -1,9 +1,5 @@
 import { ChatCompletionRequestMessage, Configuration, OpenAIApi } from "openai"
 import { AxiosError } from "axios"
-import GPT3Tokenizer from 'gpt3-tokenizer';
-
-const tokenizer = new GPT3Tokenizer({ type: 'gpt3' })
-const getNumTokens = (str: string) => tokenizer.encode(str).bpe.length
 
 require('dotenv').config();
 
