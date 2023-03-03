@@ -1,42 +1,44 @@
-import Replicate from './replicate'
 import { downloadMediaMessage, proto } from '@adiwajshing/baileys'
+import { Configuration, OpenAIApi } from 'openai';
+import fs from "fs"
+import ffmpeg from "ffmpeg"
+
+const openai = new OpenAIApi(new Configuration({
+    apiKey: process.env.OPENAI_API_KEY,
+}));
 
 export const createWhisperInstance = async (downloadOptions: any) => {
-    const replicate = new Replicate();
-    const whisperModel = await replicate.models.get('openai/whisper', "30414ee7c4fffc37e260fcab7842b5be470b9b840f2b608f5baa9bbef9a259ed");
-    
-    const transcribeAudioB64 = async (audiob64: string) => {
-        const prediction = await whisperModel.predict({ audio: audiob64, model: "medium"});
-        return prediction as {
-            segments: {
-                id: number,
-                end: number,
-                seek: number,
-                text: string,
-                start: number,
-                tokens: any[],
-                avg_logprob: number,
-                temperature: number,
-                no_speech_prob: number,
-                compression_ratio: number
-            }[],
-            translation: null,
-            transcription: string,
-            detected_language: string
+    const transcribeOggAudioBuffer = async (audioBuffer: Buffer) => {
+        // Create temp directory if not exists
+        if (!fs.existsSync("./temp")) {
+            fs.mkdirSync("./temp")
+        }
+        const randomKey = "./temp/" + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+        fs.writeFileSync(randomKey + ".ogg", audioBuffer)
+        const video = await new ffmpeg(randomKey + ".ogg")
+        await video.fnExtractSoundToMP3(randomKey + ".mp3")
+
+        try {
+            const transcription = await openai.createTranscription(fs.createReadStream(randomKey + ".mp3") as any, "whisper-1")
+            return transcription.data.text            
+        } catch (error) {
+            throw new Error("OpenAI Transcription Error: " + JSON.stringify((error as any).response?.data, null, 2))
+        } finally {
+            fs.unlinkSync(randomKey + ".ogg")
+            fs.unlinkSync(randomKey + ".mp3")
         }
     }
 
-    const downloadWhatsappMessageAsB64 = async (message: proto.IWebMessageInfo) => {
+    const downloadWhatsappMessageAsOggBuffer = async (message: proto.IWebMessageInfo) => {
         const buffer = await downloadMediaMessage(
             message,
             'buffer',
-            { },
+            {},
             downloadOptions
         )
-        const base64 = buffer.toString("base64");
-        const audiob64 = "data:audio/ogg;base64," + base64;
-        return audiob64
+
+        return buffer as Buffer
     }
-    
-    return {transcribeAudioB64, downloadWhatsappMessageAsB64}
+
+    return { downloadWhatsappMessageAsOggBuffer, transcribeOggAudioBuffer }
 }

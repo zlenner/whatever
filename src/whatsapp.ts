@@ -24,7 +24,7 @@ export const connectToWhatsApp = async () => {
         printQRInTerminal: true
     })
 
-    const {transcribeAudioB64, downloadWhatsappMessageAsB64} = await createWhisperInstance({ 
+    const {transcribeOggAudioBuffer, downloadWhatsappMessageAsOggBuffer} = await createWhisperInstance({ 
         logger,
         // pass this so that baileys can request a reupload of media
         // that has been deleted
@@ -69,19 +69,19 @@ export const connectToWhatsApp = async () => {
                 console.log("[Received]", senderNumber, "=>", "[Voice Message]")
 
                 next()
-                const audioB64 = await downloadWhatsappMessageAsB64(message)
+                const audioBuffer = await downloadWhatsappMessageAsOggBuffer(message)
                 console.log(`[Downloaded ${next()}]`, senderNumber, "=>", "[Voice Message]")
 
                 await conn.sendReceipts([message.key], "played")
                 
                 next()
-                const response = await transcribeAudioB64(audioB64)
-                console.log(`[Transcibed ${next()}]`, senderNumber, '->', response.transcription)
+                const response = await transcribeOggAudioBuffer(audioBuffer)
+                console.log(`[Transcibed ${next()}]`, senderNumber, '->', response)
 
                 await conn.sendPresenceUpdate("recording", message.key.remoteJid!)
                 
                 next()
-                const answer = await ask(senderNumber, response.transcription)
+                const answer = await ask(senderNumber, response)
                 console.log(`[Response ${next()}]`, senderNumber, '->', answer)
 
                 const audio = await textToSpeech(answer)
