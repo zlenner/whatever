@@ -6,7 +6,7 @@ async function textToSpeech(text: string) {
         url: 'https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM',
         headers: {
             'accept': 'audio/mpeg',
-            'xi-api-key': 'REDACTED',
+            'xi-api-key': process.env.ELEVENLABS_API_KEY || "",
             'Content-Type': 'application/json',
         },
         data: { text },
