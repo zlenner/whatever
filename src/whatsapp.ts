@@ -6,6 +6,7 @@ import AsyncLock from "async-lock"
 import { createWhisperInstance } from './whisper'
 import textToSpeech from './elevenlabs'
 import { timer } from './utils'
+import chalk from 'chalk'
 
 
 const logger = pino({
@@ -66,34 +67,39 @@ export const connectToWhatsApp = async () => {
             const senderNumber = message.key.remoteJid!.slice(0, -15)
 
             if (messageType === "audioMessage") {
-                console.log("[Received]", senderNumber, "=>", "[Voice Message]")
+                console.log(chalk.greenBright.bold("[Received]"), senderNumber, "=>", "[Voice Message]")
 
                 next()
                 const audioBuffer = await downloadWhatsappMessageAsOggBuffer(message)
-                console.log(`[Downloaded ${next()}]`, senderNumber, "=>", "[Voice Message]")
+                console.log(chalk.greenBright.bold(`[Downloaded ${next()}]`), senderNumber, "=>", "[Voice Message]")
 
                 await conn.sendReceipts([message.key], "played")
                 
                 next()
                 const response = await transcribeOggAudioBuffer(audioBuffer)
-                console.log(`[Transcibed ${next()}]`, senderNumber, '->', response)
+                console.log(chalk.greenBright.bold(`[Transcibed ${next()}]`), senderNumber, '->', response)
 
                 await conn.sendPresenceUpdate("recording", message.key.remoteJid!)
                 
                 next()
                 const answer = await ask(senderNumber, response)
-                console.log(`[Response ${next()}]`, senderNumber, '->', answer)
+                console.log(chalk.greenBright.bold(`[Response ${next()}]`), senderNumber, '->', answer)
 
-                const audio = await textToSpeech(answer)
-                console.log(`[Generated Speech ${next()}]`, senderNumber, '=>', "[Voice Message]")
-
-                await conn.sendMessage(message.key.remoteJid!, {
-                    audio,
-                    mimetype: getDevice(message.key.id!) == 'ios' ? 'audio/mpeg' : 'audio/mp4',
-                    ptt: true
-                }, {quoted: message})
-                
-                console.log(`[Replied as VM ${next()}]`, senderNumber, '->', answer)
+                if (!process.env.ELEVENLABS_API_KEY) {
+                    await conn.sendMessage(message.key.remoteJid!, { text: answer }, {quoted: message})
+                    console.log(chalk.greenBright.bold(`[Replied as Text, No ELEVENLABS_API_KEY ${next()}]`), senderNumber, '->', answer)
+                } else {
+                    const audio = await textToSpeech(answer)
+                    console.log(chalk.greenBright.bold(`[Generated Speech ${next()}]`), senderNumber, '=>', "[Voice Message]")
+    
+                    await conn.sendMessage(message.key.remoteJid!, {
+                        audio,
+                        mimetype: getDevice(message.key.id!) == 'ios' ? 'audio/mpeg' : 'audio/mp4',
+                        ptt: true
+                    }, {quoted: message})
+                    
+                    console.log(chalk.greenBright.bold(`[Replied as VM ${next()}]`), senderNumber, '->', answer)    
+                }
 
                 await conn.sendPresenceUpdate('available', message.key.remoteJid!)
             
@@ -101,16 +107,16 @@ export const connectToWhatsApp = async () => {
                 await conn.sendPresenceUpdate('composing', message.key.remoteJid!)
                 
                 const received = message.message?.conversation ?? ""
-                console.log("[Received]", senderNumber, '->', received)
+                console.log(chalk.greenBright.bold("[Received]"), senderNumber, '->', received)
         
                 try {
                     next()
                     const answer = await ask(senderNumber, received)
                     const time = next()
                     await conn.sendMessage(message.key.remoteJid!, { text: answer}, {quoted: message})
-                    console.log(`[Answered ${time}]`, senderNumber, '->', answer)
+                    console.log(chalk.greenBright.bold(`[Answered ${time}]`), senderNumber, '->', answer)
                 } catch (error) {
-                    console.log(`[Failed]`, error.toString())
+                    console.log(chalk.greenBright.bold(`[Failed]`), error.toString())
                 } finally {
                     
                 }
