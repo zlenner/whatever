@@ -1,6 +1,9 @@
 import inquirer from 'inquirer';
 import { ask } from './gpt3';
 import chalk from "chalk"
+import assert from "assert"
+
+assert(process.env.OPENAI_API_KEY, "OPENAI_API_KEY is required to run the app.")
 
 const askQuestion = async () => {
     const {question} = await inquirer.prompt([

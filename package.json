@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "ts-node src/index",
+    "cli": "ts-node dist/cli.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "npx tsc"
   },
