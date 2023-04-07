@@ -1,6 +1,6 @@
-import makeWASocket, { DisconnectReason, getDevice, useMultiFileAuthState } from '@adiwajshing/baileys'
+import makeWASocket, { DisconnectReason, getDevice, useMultiFileAuthState, WAMessage } from '@adiwajshing/baileys'
 import { Boom } from '@hapi/boom'
-import pino from "pino"
+import winston from 'winston'
 import { ask } from './gpt3'
 import AsyncLock from "async-lock"
 import { createWhisperInstance } from './whisper'
@@ -9,11 +9,14 @@ import { timer } from './utils'
 import chalk from 'chalk'
 
 
-const logger = pino({
-    transport: {
-        target: 'pino-pretty',
-    }
-})
+const logger = winston.createLogger({
+    level: 'info',
+    format: winston.format.json(),
+    transports: [
+    new winston.transports.Console(),
+    new winston.transports.File({ filename: 'error.log', level: 'error' })
+    ]
+    })
 
 export const connectToWhatsApp = async () => {
     const lock = new AsyncLock()
@@ -21,16 +24,27 @@ export const connectToWhatsApp = async () => {
     const { state, saveCreds } = await useMultiFileAuthState(process.env.AUTH_FOLDER ?? "auth_info")
     const conn = makeWASocket({
         auth: state,
-        logger,
+        //fix error for winston logger: logger is missing the following properties frm type 'BaseLogger': debug, error, info, log, verbose
+        // @ts-ignore
+        logger: logger,
         printQRInTerminal: true
-    })
+        })
 
-    const {transcribeOggAudioBuffer, downloadWhatsappMessageAsOggBuffer} = await createWhisperInstance({ 
-        logger,
-        // pass this so that baileys can request a reupload of media
-        // that has been deleted
-        reuploadRequest: conn.updateMediaMessage
-    })
+        const reuploadRequest = async (message: WAMessage) => {
+            const mediaKey = message.message?.audioMessage?.mediaKey
+            if (!mediaKey) {
+              throw new Error('Media key not found')
+            }
+            //fix error Property 'downloadMediaMessage' does not exist on type 'WASocket'
+            // @ts-ignore
+            const mediaData = await conn.downloadMediaMessage(message)
+            return { file: mediaData, fileEncSha256: mediaKey }
+          }
+          
+          const { transcribeOggAudioBuffer, downloadWhatsappMessageAsOggBuffer } = await createWhisperInstance({
+            logger,
+            reuploadRequest, // replace this with the modified function
+          })
 
     conn.ev.on('creds.update', saveCreds)
 
@@ -93,6 +107,8 @@ export const connectToWhatsApp = async () => {
                     console.log(chalk.greenBright.bold(`[Generated Speech ${next()}]`), senderNumber, '=>', "[Voice Message]")
     
                     await conn.sendMessage(message.key.remoteJid!, {
+                        //Type 'void' is not assignable to type 'WAMediaUpload'
+                        // @ts-ignore
                         audio,
                         mimetype: getDevice(message.key.id!) == 'ios' ? 'audio/mpeg' : 'audio/mp4',
                         ptt: true
