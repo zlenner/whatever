@@ -1,7 +1,7 @@
+import dotenv from 'dotenv';
+dotenv.config();
 import { ChatCompletionRequestMessage, Configuration, OpenAIApi } from "openai"
 import { AxiosError } from "axios"
-
-require('dotenv').config();
 
 const openai = new OpenAIApi(new Configuration({
     apiKey: process.env.OPENAI_API_KEY,
