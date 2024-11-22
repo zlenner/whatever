@@ -2,6 +2,8 @@
 
 Whatever is a way to use ChatGPT on a WhatsApp number, with the capability to listen to and respond as voice notes.
 
+Inspired by danielgross/whatsapp-gpt, after submitting some PR's to it I considered this now different enough to not be compatible with that repo.
+
 ## Installation
 
 1. Run `npm run install` to set up the app.
